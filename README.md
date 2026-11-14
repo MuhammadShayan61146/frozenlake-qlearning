@@ -32,7 +32,7 @@ A tabular Q-learning agent (NumPy, Gymnasium) wrapped in a full-stack web app. T
 ## Quick start
 
 ```bash
-git clone <your-repo-url> frozenlake-qlearning
+git clone https://github.com/MuhammadShayan61146/frozenlake-qlearning.git
 cd frozenlake-qlearning
 
 python -m venv venv

@@ -11,6 +11,8 @@ Tune the hyperparameters, retrain on demand, and inspect every Q-value as the po
 ![Gymnasium](https://img.shields.io/badge/Gymnasium-FrozenLake--v1-0081A5)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
 
+**[Open the live demo](https://muhammadshayan61146.github.io/frozenlake-qlearning/)**
+
 <img src="docs/dashboard-light.png" alt="Frozen Lake Lab dashboard in light mode" width="920">
 
 </div>
@@ -28,6 +30,11 @@ A tabular Q-learning agent (NumPy, Gymnasium) wrapped in a full-stack web app. T
 | Dark mode | |
 |---|---|
 | <img src="docs/dashboard-dark.png" alt="Dashboard in dark mode" width="900"> | The theme follows your system setting, with a manual toggle. |
+
+## Two ways to run it
+
+- **Live demo (no install).** The `docs/` folder is a static build that runs the same dashboard with the Q-learning engine ported to JavaScript, entirely in your browser. It is what GitHub Pages serves.
+- **Full stack (Python).** FastAPI trains the agent with NumPy and Gymnasium and streams every update to the dashboard. Follow the quick start below.
 
 ## Quick start
 
@@ -102,10 +109,12 @@ main.py             Original end-to-end CLI pipeline
 frontend/
   index.html        Dashboard markup
   static/app.js     Stream client, board, controls, charts
+  static/local-engine.js   In-browser port of the Q-learning engine (static demo)
   static/app.css    Compiled Tailwind (committed)
   src/input.css     Tailwind source and design tokens
 tests/              pytest suite
 scripts/build_css.mjs   Offline Tailwind build
+scripts/build_pages.py  Builds the static site into docs/
 Dockerfile, render.yaml, requirements-server.txt   Deployment
 ```
 
@@ -145,7 +154,8 @@ Terminal transitions do not bootstrap, because there is no next action beyond th
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+pytest                                   # Python engine, sessions and API
+node --test tests/local_engine.test.mjs  # in-browser engine
 ```
 
 The frontend ships with its compiled stylesheet. After editing classes in `index.html` or `app.js`, rebuild it:
@@ -155,6 +165,3 @@ npx @tailwindcss/cli -i frontend/src/input.css -o frontend/static/app.css --mini
 ```
 
 
-## Ideas for next steps
-
-SARSA and Double Q-learning side by side, custom map editor, replay of saved runs, Docker image.

@@ -28,7 +28,12 @@ let P = {
 };
 
 /* ------------------------------------------------------------------ api */
+// Static builds (GitHub Pages) set window.FL_LOCAL and load local-engine.js, which
+// answers the same commands in the browser instead of calling the FastAPI backend.
+const LOCAL = Boolean(window.FL_LOCAL && window.LocalLab);
+
 async function api(path, body) {
+  if (LOCAL) return window.LocalLab.handle(path, body ?? {});
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -456,7 +461,7 @@ const SLIDERS = [
   { key: "gamma", label: "Discount factor", sym: "γ", min: 0.5, max: 0.999, step: 0.001, fmt: (v) => v.toFixed(3), help: () => "How much reward later on is worth today." },
   { key: "epsilon_decay", label: "Epsilon decay", sym: "ε", min: 0.99, max: 0.9999, step: 0.0001, fmt: (v) => v.toFixed(4), help: decayHint },
   { key: "epsilon_min", label: "Minimum epsilon", sym: "ε", min: 0, max: 0.2, step: 0.005, fmt: (v) => v.toFixed(3), help: () => "Exploration the agent never gives up." },
-  { key: "episodes", label: "Episodes", sym: "", min: 1000, max: 100000, step: 1000, fmt: (v) => nf.format(v), help: () => "More episodes help most on the 8 × 8 map." },
+  { key: "episodes", label: "Episodes", sym: "", min: 1000, max: 100000, step: 1000, fmt: (v) => nf.format(v), help: () => "The 8 × 8 map needs slower decay and more episodes." },
 ];
 
 function decayHint() {
@@ -517,7 +522,10 @@ const resetAgent = () => api("/api/reset", P);
 $("#seg-map").addEventListener("click", guard(async (e) => {
   const b = e.target.closest("button"); if (!b) return;
   P.map_name = b.dataset.v;
-  if (P.map_name === "8x8" && P.episodes < 30000) P.episodes = 30000;
+  // The bigger lake needs a longer exploration phase, or the agent never finds the goal.
+  Object.assign(P, P.map_name === "8x8"
+    ? { epsilon_decay: 0.9999, episodes: LOCAL ? 60000 : 30000 }
+    : { epsilon_decay: 0.9995, episodes: 15000 });
   syncControls();
   stopAuto();
   await resetAgent();
@@ -562,6 +570,12 @@ $("#theme-btn").addEventListener("click", () => {
 
 /* --------------------------------------------------------------- stream */
 function connect() {
+  if (LOCAL) {
+    $("#conn").textContent = "Running in your browser";
+    $("#footer-note").textContent = "Tabular Q-learning on the FrozenLake environment, running entirely in your browser. The Python and FastAPI version is in the GitHub repository.";
+    window.LocalLab.subscribe(onSnap);
+    return;
+  }
   const es = new EventSource("/api/stream");
   let everConnected = false;
   es.onmessage = (e) => { everConnected = true; $("#conn").textContent = "Live"; onSnap(JSON.parse(e.data)); };

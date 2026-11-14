@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frozen Lake Lab</title>
+  <meta name="description" content="Watch a Q-learning agent learn to cross thin ice. Tune hyperparameters, retrain live and inspect every Q-value.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%84%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Frozen Lake Lab: watch a Q-learning agent learn">
+  <meta property="og:description" content="Interactive reinforcement learning demo. Tune hyperparameters, retrain live and watch an agent learn to cross slippery ice. Runs entirely in your browser.">
+  <meta property="og:url" content="https://muhammadshayan61146.github.io/frozenlake-qlearning/">
+  <meta property="og:image" content="https://muhammadshayan61146.github.io/frozenlake-qlearning/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="static/app.css">
+  <script>
+    try { var t = localStorage.getItem("fl-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body class="font-body text-ink antialiased min-h-screen">
+
+<header class="mx-auto max-w-[1320px] px-4 sm:px-6 pt-6 pb-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <div class="flex items-center gap-3 min-w-0">
+    <span class="grid place-items-center size-11 rounded-2xl bg-ink text-page text-2xl" aria-hidden="true">❄️</span>
+    <div class="min-w-0">
+      <h1 class="font-display font-bold text-2xl sm:text-[1.75rem] leading-none tracking-tight">Frozen Lake Lab</h1>
+      <p class="text-ink-2 text-sm mt-1.5">A Q-learning agent learns to cross thin ice, and you can watch it think.</p>
+    </div>
+  </div>
+  <div class="ml-auto flex items-center gap-3">
+    <span id="conn" class="text-xs text-muted hidden sm:inline" role="status">Connecting…</span>
+    <span id="status-pill" class="pill" data-s="idle" role="status"><span class="dot"></span><span id="status-text">Idle</span></span>
+    <button id="theme-btn" class="btn !px-3 !py-2" type="button" aria-label="Toggle light and dark theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+
+<main class="mx-auto max-w-[1320px] px-4 sm:px-6 pb-14 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] items-start">
+
+  <!-- ICE FIELD -->
+  <section class="card p-4 sm:p-6" aria-labelledby="h-field">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <h2 id="h-field" class="font-display font-bold text-xl tracking-tight">Ice field</h2>
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Board overlays">
+        <button id="ov-policy" class="chip" type="button" aria-pressed="true">Policy arrows</button>
+        <button id="ov-heat" class="chip" type="button" aria-pressed="true">Q-value heat</button>
+        <button id="ov-trail" class="chip" type="button" aria-pressed="false">Visit trail</button>
+      </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_270px] items-start">
+      <div class="board-wrap mx-auto w-full max-w-[600px] lg:mx-0">
+        <div id="board" class="board show-policy show-heat" role="group" tabindex="0"
+             aria-label="Frozen lake board. Use arrow keys to steer the agent manually."></div>
+      </div>
+      <aside class="rounded-2xl bg-sunken border border-line p-4" aria-labelledby="h-insp">
+        <h3 id="h-insp" class="font-display font-bold text-base tracking-tight">Q-value inspector</h3>
+        <p id="insp-title" class="text-sm text-ink-2 mt-1">Select a tile on the ice field.</p>
+        <div id="insp-bars" class="mt-4 grid gap-3"></div>
+      </aside>
+    </div>
+
+    <p id="narration" class="mt-4 min-h-[2.75rem] text-center text-[0.95rem] text-ink-2" aria-live="polite">
+      Train the agent, then watch it cross.
+    </p>
+
+    <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+      <button id="btn-step" class="btn" type="button">Step</button>
+      <button id="btn-auto" class="btn" type="button" aria-pressed="false">Auto-play</button>
+      <button id="btn-new" class="btn" type="button">New episode</button>
+    </div>
+
+    <dl class="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-4 pt-5 border-t border-line">
+      <div><dt class="text-muted text-xs font-semibold">Episode</dt><dd id="k-episode" class="font-display font-bold text-2xl tabular-nums">0</dd></div>
+      <div><dt class="text-muted text-xs font-semibold">Epsilon</dt><dd id="k-eps" class="font-display font-bold text-2xl tabular-nums">1.000</dd></div>
+      <div><dt class="text-muted text-xs font-semibold">Success, last 100</dt><dd id="k-success" class="font-display font-bold text-2xl tabular-nums">0%</dd></div>
+      <div><dt class="text-muted text-xs font-semibold">Greedy test, 1,000 runs</dt><dd id="k-eval" class="font-display font-bold text-2xl tabular-nums">—</dd></div>
+      <div><dt class="text-muted text-xs font-semibold">Speed</dt><dd id="k-speed" class="font-display font-bold text-2xl tabular-nums">—</dd></div>
+    </dl>
+    <div class="mt-4 h-1.5 rounded-full bg-line overflow-hidden" role="progressbar" aria-label="Training progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-wrap">
+      <div id="progress" class="h-full bg-accent rounded-full transition-[width] duration-200" style="width:0%"></div>
+    </div>
+  </section>
+
+  <!-- SIDE: controls + inspector -->
+  <div class="grid gap-6">
+    <section class="card p-5" aria-labelledby="h-train">
+      <h2 id="h-train" class="font-display font-bold text-xl tracking-tight mb-4">Training</h2>
+
+      <div class="grid gap-5">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm font-semibold">Map</span>
+          <div id="seg-map" class="seg" role="group" aria-label="Map size">
+            <button type="button" data-v="4x4" aria-pressed="true">4 × 4</button>
+            <button type="button" data-v="8x8" aria-pressed="false">8 × 8</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <div id="lbl-slip" class="text-sm font-semibold">Slippery ice</div>
+            <div class="text-xs text-muted mt-0.5">Moves slide sideways a third of the time each way.</div>
+          </div>
+          <button id="sw-slippery" class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-slip"></button>
+        </div>
+
+        <div id="sliders" class="grid gap-5"></div>
+
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm font-semibold">Training speed</span>
+          <div id="seg-speed" class="seg" role="group" aria-label="Training speed">
+            <button type="button" data-v="300" aria-pressed="false">Slow</button>
+            <button type="button" data-v="3000" aria-pressed="true">Steady</button>
+            <button type="button" data-v="20000" aria-pressed="false">Fast</button>
+            <button type="button" data-v="0" aria-pressed="false">Max</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <label for="seed" class="text-sm font-semibold">Random seed</label>
+          <input id="seed" type="number" min="0" max="2147483647" value="42"
+                 class="w-28 rounded-xl border border-line bg-sunken px-3 py-1.5 text-sm text-right tabular-nums">
+        </div>
+
+        <label class="flex items-center gap-2.5 text-sm text-ink-2 cursor-pointer">
+          <input id="auto-retrain" type="checkbox" class="size-4 accent-[var(--accent)]">
+          Retrain automatically when a setting changes
+        </label>
+
+        <div class="grid grid-cols-[1fr_auto_auto] gap-2">
+          <button id="btn-train" class="btn btn-primary" type="button">Train agent</button>
+          <button id="btn-stop" class="btn" type="button" disabled>Stop</button>
+          <button id="btn-reset" class="btn" type="button">Reset</button>
+        </div>
+        <p class="text-xs text-muted -mt-2">Changing the map or ice clears the agent, because its Q-table no longer matches the lake.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- CHARTS -->
+  <section class="lg:col-span-2 grid gap-6 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr]" aria-label="Training metrics">
+    <article class="card p-5 md:col-span-2 xl:col-span-1">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display font-bold text-lg tracking-tight">Success rate</h2>
+          <p class="text-xs text-muted mt-0.5">Share of training episodes that reached the goal</p>
+        </div>
+        <button class="chip tbl-toggle" data-chart="success" type="button" aria-pressed="false">Table</button>
+      </div>
+      <div id="legend-success" class="flex gap-4 text-xs text-ink-2 mt-3"></div>
+      <div id="chart-success" class="chart mt-2"></div>
+    </article>
+    <article class="card p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display font-bold text-lg tracking-tight">Q-value convergence</h2>
+          <p class="text-xs text-muted mt-0.5">Average best Q-value across states; flat means settled</p>
+        </div>
+        <button class="chip tbl-toggle" data-chart="q" type="button" aria-pressed="false">Table</button>
+      </div>
+      <div id="chart-q" class="chart mt-4"></div>
+    </article>
+    <article class="card p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display font-bold text-lg tracking-tight">Exploration rate</h2>
+          <p class="text-xs text-muted mt-0.5">Chance of a random move, shrinking each episode</p>
+        </div>
+        <button class="chip tbl-toggle" data-chart="eps" type="button" aria-pressed="false">Table</button>
+      </div>
+      <div id="chart-eps" class="chart mt-4"></div>
+    </article>
+  </section>
+</main>
+
+<footer id="footer-note" class="mx-auto max-w-[1320px] px-4 sm:px-6 pb-10 text-xs text-muted">
+  Tabular Q-learning on Gymnasium FrozenLake-v1, served by FastAPI. Everything you see is computed by the Python backend and streamed live.
+</footer>
+
+<div id="toast" class="toast" role="alert" hidden></div>
+<script>window.FL_LOCAL = true;</script>
+<script src="static/local-engine.js"></script>
+<script src="static/app.js"></script>
+</body>
+</html>

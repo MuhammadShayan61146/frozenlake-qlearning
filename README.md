@@ -140,28 +140,6 @@ Q(s, a) ← Q(s, a) + α · [ r + γ · max Q(s′, a′) − Q(s, a) ]
 
 Terminal transitions do not bootstrap, because there is no next action beyond the goal or a hole. On the default slippery 4 × 4 map the greedy policy reaches the goal in roughly 70 to 75 percent of runs, close to the best achievable on that map. Slippery 8 × 8 needs far more episodes (the UI suggests 30,000) and is a good place to experiment with decay and learning rate.
 
-## Deploy
-
-Each visitor gets a private agent through a session cookie, so the app is safe to publish. Run **one worker process**, because sessions live in memory.
-
-**Render (free, no credit card needed for the free tier)**
-
-1. Push this folder to a GitHub repository.
-2. On [render.com](https://render.com), choose **New → Blueprint**, pick the repository and approve. `render.yaml` configures everything.
-   (Or **New → Web Service** with build command `pip install -r requirements-server.txt` and start command
-   `uvicorn backend:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"`.)
-3. When the deploy finishes, open the `https://<name>.onrender.com` URL.
-
-Free services sleep after 15 minutes without traffic and take about a minute to wake up.
-
-**Docker (Fly.io, Railway, Hugging Face Spaces, any VPS)**
-
-```bash
-docker build -t frozen-lake-lab .
-docker run -p 8000:8000 frozen-lake-lab
-```
-
-**Tuning limits** with environment variables: `FLL_MAX_SESSIONS` (default 100), `FLL_MAX_TRAINING` concurrent training jobs (default 3) and `FLL_SESSION_TTL` idle seconds (default 1800). Health check: `GET /healthz`.
 
 ## Development
 
@@ -176,14 +154,6 @@ The frontend ships with its compiled stylesheet. After editing classes in `index
 npx @tailwindcss/cli -i frontend/src/input.css -o frontend/static/app.css --minify
 ```
 
-## Changes to the original code
-
-All additions are backward compatible, and `python main.py` behaves as before.
-
-- `environment.make_env()` accepts `map_name`, `is_slippery` and `max_steps`, and `get_layout()` was added.
-- `QLearningAgent.update()` returns the TD error, and `choose_action()` always returns a plain `int`.
-- `train()` accepts `seed`, `on_episode_end` and `should_stop`. The training environment is now seeded, which `SEED` previously did not guarantee.
-- `visualize.py` infers the grid size, so it works for 8 × 8.
 
 ## Ideas for next steps
 

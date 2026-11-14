@@ -1,0 +1,9 @@
+.git
+venv/
+.venv/
+__pycache__/
+results/
+docs/
+tests/
+scripts/
+node_modules/
